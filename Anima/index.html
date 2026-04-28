@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animación Player Run - Phaser</title>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
+<style>
+    body{
+        margin:0;
+        background:#111;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
+    }
+
+    canvas{
+        border:2px solid white;
+    }
+</style>
+</head>
+<body>
+
+<script>
+class GameScene extends Phaser.Scene {
+
+    constructor(){
+        super("GameScene");
+    }
+
+    preload(){
+
+        this.load.spritesheet('player', 'assets/player_run.png', {
+    frameWidth: 245,
+    frameHeight: 347
+});
+
+    }
+
+    create(){
+
+        // fondo simple
+        this.add.rectangle(400,300,800,600,0x228B22);
+
+        // crear animación correr
+        this.anims.create({
+            key:'run',
+            frames:this.anims.generateFrameNumbers('player',{
+                start:0,
+                end:5
+            }),
+            frameRate:10,
+            repeat:-1
+        });
+
+        // jugador
+        this.player = this.physics.add.sprite(400,300,'player');
+        this.player.setScale(0.3);
+
+        this.player.setCollideWorldBounds(true);
+
+        // teclado
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+    }
+
+    update(){
+
+        this.player.setVelocity(0);
+
+        let moving = false;
+
+        if(this.cursors.right.isDown){
+            this.player.setVelocityX(160);
+            this.player.setFlipX(false);
+            moving = true;
+        }
+
+        if(this.cursors.left.isDown){
+            this.player.setVelocityX(-160);
+            this.player.setFlipX(true);
+            moving = true;
+        }
+
+        if(this.cursors.up.isDown){
+            this.player.setVelocityY(-160);
+            moving = true;
+        }
+
+        if(this.cursors.down.isDown){
+            this.player.setVelocityY(160);
+            moving = true;
+        }
+
+        if(moving){
+            this.player.play('run', true);
+        }else{
+            this.player.anims.stop();
+            this.player.setFrame(0);
+        }
+
+    }
+}
+
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    backgroundColor: "#222222",
+    physics:{
+        default:'arcade',
+        arcade:{
+            debug:false
+        }
+    },
+    scene:[GameScene]
+};
+
+new Phaser.Game(config);
+</script>
+
+</body>
+</html>

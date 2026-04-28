@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Captain Style Prototype V0.1</title>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
+<style>
+    body{
+        margin:0;
+        background:#111;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
+    }
+
+    canvas{
+        border:2px solid white;
+    }
+</style>
+</head>
+<body>
+
+<script>
+class GameScene extends Phaser.Scene{
+
+    constructor(){
+        super("GameScene");
+    }
+
+    preload(){
+
+        // TU SPRITESHEET
+        this.load.spritesheet('player','assets/player_run.png',{
+            frameWidth:160,   // 964 / 6 aprox
+            frameHeight:259
+        });
+
+    }
+
+    create(){
+
+        // =========================
+        // MEDIDAS
+        // =========================
+        this.screenW = 800;
+        this.screenH = 600;
+
+        this.topArea = 420;      // cinematica
+        this.bottomArea = 180;   // minimapa
+
+        // =========================
+        // FONDO ARRIBA
+        // =========================
+        this.bg1 = this.add.rectangle(400,210,800,420,0x2e8b57);
+        this.bg2 = this.add.rectangle(1200,210,800,420,0x2e8b57);
+
+        // líneas decorativas
+        this.line1 = this.add.rectangle(400,210,6,420,0xffffff);
+        this.line2 = this.add.rectangle(1200,210,6,420,0xffffff);
+
+        // =========================
+        // PLAYER CINEMATICA
+        // =========================
+        this.anims.create({
+            key:'run',
+            frames:this.anims.generateFrameNumbers('player',{
+                start:0,
+                end:5
+            }),
+            frameRate:10,
+            repeat:-1
+        });
+
+        this.player = this.add.sprite(250,300,'player');
+        this.player.setScale(0.55);
+        this.player.play('run');
+
+        // pelota arriba
+        this.ball = this.add.circle(310,350,8,0xffffff);
+
+        // =========================
+        // PANEL ABAJO
+        // =========================
+        this.add.rectangle(400,510,800,180,0x1c1c1c);
+
+        // cancha radar
+        this.radarX = 140;
+        this.radarY = 445;
+        this.radarW = 520;
+        this.radarH = 130;
+
+        this.add.rectangle(
+            this.radarX + this.radarW/2,
+            this.radarY + this.radarH/2,
+            this.radarW,
+            this.radarH,
+            0x228b22
+        ).setStrokeStyle(2,0xffffff);
+
+        this.add.line(
+            0,0,
+            this.radarX + this.radarW/2, this.radarY,
+            this.radarX + this.radarW/2, this.radarY + this.radarH,
+            0xffffff
+        );
+
+        // jugador radar
+        this.mapPlayer = this.add.circle(300,510,7,0x00aaff);
+
+        // rivales dummy
+        this.add.circle(500,490,6,0xff4444);
+        this.add.circle(580,530,6,0xff4444);
+
+        // pelota radar
+        this.mapBall = this.add.circle(312,510,4,0xffffff);
+
+        // =========================
+        // CONTROLES
+        // =========================
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+        // dirección visual actual
+        this.facing = "right";
+
+        // velocidad radar
+        this.speed = 2.5;
+    }
+
+    update(){
+
+        let moving = false;
+
+        // =========================
+        // DERECHA
+        // =========================
+        if(this.cursors.right.isDown){
+            this.mapPlayer.x += this.speed;
+            this.facing = "right";
+            this.player.setFlipX(false);
+            moving = true;
+        }
+
+        // =========================
+        // IZQUIERDA
+        // =========================
+        if(this.cursors.left.isDown){
+            this.mapPlayer.x -= this.speed;
+            this.facing = "left";
+            this.player.setFlipX(true);
+            moving = true;
+        }
+
+        // =========================
+        // ARRIBA
+        // sigue mirando al último lado
+        // =========================
+        if(this.cursors.up.isDown){
+            this.mapPlayer.y -= this.speed;
+            moving = true;
+        }
+
+        // =========================
+        // ABAJO
+        // sigue mirando al último lado
+        // =========================
+        if(this.cursors.down.isDown){
+            this.mapPlayer.y += this.speed;
+            moving = true;
+        }
+
+        // límites radar
+        this.mapPlayer.x = Phaser.Math.Clamp(
+            this.mapPlayer.x,
+            this.radarX + 8,
+            this.radarX + this.radarW - 8
+        );
+
+        this.mapPlayer.y = Phaser.Math.Clamp(
+            this.mapPlayer.y,
+            this.radarY + 8,
+            this.radarY + this.radarH - 8
+        );
+
+        // pelota sigue jugador radar
+        this.mapBall.x = this.mapPlayer.x + 12;
+        this.mapBall.y = this.mapPlayer.y;
+
+        // =========================
+        // ANIMACIÓN
+        // =========================
+        if(moving){
+
+            this.player.play('run',true);
+
+            // scroll cancha según lado apuntado
+            if(this.facing === "right"){
+                this.bg1.x -= 4;
+                this.bg2.x -= 4;
+                this.line1.x -= 4;
+                this.line2.x -= 4;
+            }else{
+                this.bg1.x += 4;
+                this.bg2.x += 4;
+                this.line1.x += 4;
+                this.line2.x += 4;
+            }
+
+        }else{
+            this.player.anims.stop();
+            this.player.setFrame(0);
+        }
+
+        // loop fondo
+        if(this.bg1.x < -400){
+            this.bg1.x = 1200;
+            this.line1.x = 1200;
+        }
+
+        if(this.bg2.x < -400){
+            this.bg2.x = 1200;
+            this.line2.x = 1200;
+        }
+
+        if(this.bg1.x > 1200){
+            this.bg1.x = -400;
+            this.line1.x = -400;
+        }
+
+        if(this.bg2.x > 1200){
+            this.bg2.x = -400;
+            this.line2.x = -400;
+        }
+
+        // pelota arriba según lado
+        if(this.facing === "right"){
+            this.ball.x = this.player.x + 45;
+        }else{
+            this.ball.x = this.player.x - 45;
+        }
+
+        this.ball.y = this.player.y + 45;
+    }
+}
+
+const config = {
+    type: Phaser.AUTO,
+    width:800,
+    height:600,
+    backgroundColor:"#000000",
+    scene:[GameScene]
+};
+
+new Phaser.Game(config);
+</script>
+
+</body>
+</html>
