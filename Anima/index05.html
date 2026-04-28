@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Captain Style Prototype V0.5</title>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+canvas{
+    border:2px solid white;
+}
+</style>
+</head>
+<body>
+
+<script>
+class GameScene extends Phaser.Scene{
+
+constructor(){
+    super("GameScene");
+}
+
+preload(){
+
+    this.load.spritesheet('player','assets/player_run.png',{
+        frameWidth:160,
+        frameHeight:259
+    });
+
+}
+
+create(){
+
+    // =========================
+    // FONDO ARRIBA
+    // =========================
+    this.bg1 = this.add.rectangle(400,210,800,420,0x2e8b57);
+    this.bg2 = this.add.rectangle(1200,210,800,420,0x2e8b57);
+
+    this.line1 = this.add.rectangle(400,210,6,420,0xffffff);
+    this.line2 = this.add.rectangle(1200,210,6,420,0xffffff);
+
+    // =========================
+    // PLAYER
+    // =========================
+    this.anims.create({
+        key:'run',
+        frames:this.anims.generateFrameNumbers('player',{
+            start:0,end:5
+        }),
+        frameRate:10,
+        repeat:-1
+    });
+
+    this.player = this.add.sprite(250,300,'player');
+    this.player.setScale(0.55);
+
+    this.ball = this.add.circle(310,350,8,0xffffff);
+
+    // =========================
+    // PANEL ABAJO
+    // =========================
+    this.add.rectangle(400,510,800,180,0x1c1c1c);
+
+    this.radarX = 140;
+    this.radarY = 445;
+    this.radarW = 520;
+    this.radarH = 130;
+
+    this.add.rectangle(
+        this.radarX + this.radarW/2,
+        this.radarY + this.radarH/2,
+        this.radarW,
+        this.radarH,
+        0x228b22
+    ).setStrokeStyle(2,0xffffff);
+
+    this.add.line(
+        0,0,
+        this.radarX + this.radarW/2,this.radarY,
+        this.radarX + this.radarW/2,this.radarY+this.radarH,
+        0xffffff
+    );
+
+    // arco
+    this.add.rectangle(
+        this.radarX + this.radarW + 10,
+        this.radarY + this.radarH/2,
+        18,
+        46
+    ).setStrokeStyle(2,0xffffff);
+
+    // =========================
+    // RADAR OBJETOS
+    // =========================
+    this.mapPlayer = this.add.circle(300,510,7,0x00aaff);
+    this.mapBall   = this.add.circle(312,510,4,0xffffff);
+
+    // DEFENSOR
+    this.defender = this.add.circle(500,510,7,0xff3333);
+
+    // ARQUERO
+    this.keeper = this.add.rectangle(
+        this.radarX + this.radarW + 3,
+        this.radarY + 65,
+        8,
+        20,
+        0xffff00
+    );
+
+    this.keeperSpeed = 1.4;
+    this.keeperDir = 1;
+
+    // =========================
+    // UI
+    // =========================
+    this.score = 0;
+
+    this.scoreText = this.add.text(20,20,"GOLES: 0",{
+        fontSize:"24px",
+        fill:"#ffffff"
+    });
+
+    this.goalText = this.add.text(400,170,"",{
+        fontSize:"48px",
+        fill:"#ffff00",
+        fontStyle:"bold"
+    }).setOrigin(0.5);
+
+    this.saveText = this.add.text(400,170,"",{
+        fontSize:"42px",
+        fill:"#00ffff",
+        fontStyle:"bold"
+    }).setOrigin(0.5);
+
+    this.stealText = this.add.text(400,170,"",{
+        fontSize:"42px",
+        fill:"#ff5555",
+        fontStyle:"bold"
+    }).setOrigin(0.5);
+
+    // =========================
+    // CONTROLES
+    // =========================
+    this.cursors = this.input.keyboard.createCursorKeys();
+
+    this.spaceKey = this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.SPACE
+    );
+
+    this.facing = "right";
+    this.speed = 2.5;
+
+    this.hasBall = true;
+    this.ballVX = 0;
+    this.ballVY = 0;
+
+    this.goalCooldown = false;
+    this.saveCooldown = false;
+    this.stealCooldown = false;
+
+}
+
+update(){
+
+    let moving = false;
+
+    // =========================
+    // PLAYER MOVE
+    // =========================
+    if(this.cursors.right.isDown){
+        this.mapPlayer.x += this.speed;
+        this.facing = "right";
+        this.player.setFlipX(false);
+        moving = true;
+    }
+
+    if(this.cursors.left.isDown){
+        this.mapPlayer.x -= this.speed;
+        this.facing = "left";
+        this.player.setFlipX(true);
+        moving = true;
+    }
+
+    if(this.cursors.up.isDown){
+        this.mapPlayer.y -= this.speed;
+        moving = true;
+    }
+
+    if(this.cursors.down.isDown){
+        this.mapPlayer.y += this.speed;
+        moving = true;
+    }
+
+    this.mapPlayer.x = Phaser.Math.Clamp(
+        this.mapPlayer.x,
+        this.radarX+8,
+        this.radarX+this.radarW-8
+    );
+
+    this.mapPlayer.y = Phaser.Math.Clamp(
+        this.mapPlayer.y,
+        this.radarY+8,
+        this.radarY+this.radarH-8
+    );
+
+    // =========================
+    // PLAYER ANIM
+    // =========================
+    if(moving){
+
+        this.player.play('run',true);
+
+        if(this.facing==="right"){
+            this.moveBg(-4);
+        }else{
+            this.moveBg(4);
+        }
+
+    }else{
+        this.player.anims.stop();
+        this.player.setFrame(0);
+    }
+
+    this.loopBg(this.bg1,this.line1);
+    this.loopBg(this.bg2,this.line2);
+
+    // =========================
+    // PATEAR
+    // =========================
+    if(
+        Phaser.Input.Keyboard.JustDown(this.spaceKey)
+        && this.hasBall
+    ){
+
+        this.hasBall = false;
+
+        let shot = 6;
+
+        this.ballVX = (this.facing==="right") ? shot : -shot;
+        this.ballVY = 0;
+
+        if(this.cursors.up.isDown) this.ballVY = -shot;
+        if(this.cursors.down.isDown) this.ballVY = shot;
+    }
+
+    // =========================
+    // BALL
+    // =========================
+    if(this.hasBall){
+
+        this.mapBall.x = this.mapPlayer.x + (this.facing==="right" ? 12 : -12);
+        this.mapBall.y = this.mapPlayer.y;
+
+    }else{
+
+        this.mapBall.x += this.ballVX;
+        this.mapBall.y += this.ballVY;
+
+        this.ballVX *= 0.985;
+        this.ballVY *= 0.985;
+
+        // recuperar
+        let d = Phaser.Math.Distance.Between(
+            this.mapPlayer.x,this.mapPlayer.y,
+            this.mapBall.x,this.mapBall.y
+        );
+
+        if(d < 14){
+            this.hasBall = true;
+            this.ballVX = 0;
+            this.ballVY = 0;
+        }
+    }
+
+    this.mapBall.x = Phaser.Math.Clamp(
+        this.mapBall.x,
+        this.radarX+4,
+        this.radarX+this.radarW+20
+    );
+
+    this.mapBall.y = Phaser.Math.Clamp(
+        this.mapBall.y,
+        this.radarY+4,
+        this.radarY+this.radarH-4
+    );
+
+    // =========================
+    // DEFENSOR IA
+    // =========================
+    this.moveDefender();
+
+    // robo
+    this.checkSteal();
+
+    // =========================
+    // ARQUERO
+    // =========================
+    this.keeper.y += this.keeperSpeed * this.keeperDir;
+
+    if(this.keeper.y < this.radarY + 45){
+        this.keeperDir = 1;
+    }
+
+    if(this.keeper.y > this.radarY + 85){
+        this.keeperDir = -1;
+    }
+
+    this.checkSave();
+    this.checkGoal();
+
+    // =========================
+    // BALL ARRIBA
+    // =========================
+    let targetX = this.hasBall
+        ? this.player.x + (this.facing==="right" ? 45 : -45)
+        : this.player.x + (this.facing==="right" ? 80 : -80);
+
+    this.ball.x = Phaser.Math.Linear(this.ball.x,targetX,0.15);
+    this.ball.y = this.player.y + 45;
+
+    if(!this.hasBall){
+        this.ball.angle += 15;
+    }else{
+        this.ball.angle = 0;
+    }
+
+}
+
+moveDefender(){
+
+    let speed = 1.1;
+
+    let angle = Phaser.Math.Angle.Between(
+        this.defender.x,this.defender.y,
+        this.mapPlayer.x,this.mapPlayer.y
+    );
+
+    this.defender.x += Math.cos(angle) * speed;
+    this.defender.y += Math.sin(angle) * speed;
+
+}
+
+checkSteal(){
+
+    if(this.stealCooldown) return;
+    if(!this.hasBall) return;
+
+    let d = Phaser.Math.Distance.Between(
+        this.mapPlayer.x,this.mapPlayer.y,
+        this.defender.x,this.defender.y
+    );
+
+    if(d < 14){
+
+        this.stealCooldown = true;
+        this.hasBall = false;
+
+        this.mapBall.x = this.defender.x + 10;
+        this.mapBall.y = this.defender.y;
+
+        this.ballVX = -3;
+        this.ballVY = Phaser.Math.Between(-1,1);
+
+        this.stealText.setText("ROBO!");
+
+        this.time.delayedCall(900,()=>{
+            this.stealText.setText("");
+            this.stealCooldown = false;
+        });
+    }
+
+}
+
+checkSave(){
+
+    if(this.saveCooldown) return;
+    if(this.hasBall) return;
+
+    let hit =
+        Math.abs(this.mapBall.x - this.keeper.x) < 8 &&
+        Math.abs(this.mapBall.y - this.keeper.y) < 14;
+
+    if(hit){
+
+        this.saveCooldown = true;
+
+        this.ballVX = -4;
+        this.ballVY = Phaser.Math.Between(-2,2);
+
+        this.saveText.setText("ATAJÓ!");
+
+        this.time.delayedCall(800,()=>{
+            this.saveText.setText("");
+            this.saveCooldown = false;
+        });
+    }
+
+}
+
+checkGoal(){
+
+    if(this.goalCooldown) return;
+
+    let goalX = this.radarX + this.radarW;
+    let top = this.radarY + 42;
+    let bottom = this.radarY + 88;
+
+    if(
+        this.mapBall.x >= goalX &&
+        this.mapBall.y >= top &&
+        this.mapBall.y <= bottom
+    ){
+
+        this.goalCooldown = true;
+        this.score++;
+
+        this.scoreText.setText("GOLES: " + this.score);
+        this.goalText.setText("GOOOOL!");
+
+        this.time.delayedCall(1500,()=>{
+
+            this.goalText.setText("");
+            this.resetPlay();
+            this.goalCooldown = false;
+
+        });
+    }
+
+}
+
+resetPlay(){
+
+    this.mapPlayer.x = 300;
+    this.mapPlayer.y = 510;
+
+    this.mapBall.x = 312;
+    this.mapBall.y = 510;
+
+    this.defender.x = 500;
+    this.defender.y = 510;
+
+    this.hasBall = true;
+    this.ballVX = 0;
+    this.ballVY = 0;
+
+}
+
+moveBg(v){
+
+    this.bg1.x += v;
+    this.bg2.x += v;
+    this.line1.x += v;
+    this.line2.x += v;
+
+}
+
+loopBg(bg,line){
+
+    if(bg.x < -400){
+        bg.x = 1200;
+        line.x = 1200;
+    }
+
+    if(bg.x > 1200){
+        bg.x = -400;
+        line.x = -400;
+    }
+
+}
+
+}
+
+const config = {
+    type:Phaser.AUTO,
+    width:800,
+    height:600,
+    backgroundColor:"#000",
+    scene:[GameScene]
+};
+
+new Phaser.Game(config);
+</script>
+
+</body>
+</html>
