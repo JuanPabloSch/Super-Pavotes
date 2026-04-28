@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Captain Style Prototype V0.4</title>
+<title>Captain Style Prototype V0.5</title>
 
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 
@@ -65,7 +65,6 @@ create(){
     this.player = this.add.sprite(250,300,'player');
     this.player.setScale(0.55);
 
-    // balón arriba
     this.ball = this.add.circle(310,350,8,0xffffff);
 
     // =========================
@@ -93,7 +92,7 @@ create(){
         0xffffff
     );
 
-    // ARCO
+    // arco
     this.add.rectangle(
         this.radarX + this.radarW + 10,
         this.radarY + this.radarH/2,
@@ -102,16 +101,15 @@ create(){
     ).setStrokeStyle(2,0xffffff);
 
     // =========================
-    // PLAYER RADAR
+    // RADAR OBJETOS
     // =========================
     this.mapPlayer = this.add.circle(300,510,7,0x00aaff);
+    this.mapBall   = this.add.circle(312,510,4,0xffffff);
 
-    // BALL RADAR
-    this.mapBall = this.add.circle(312,510,4,0xffffff);
+    // DEFENSOR
+    this.defender = this.add.circle(500,510,7,0xff3333);
 
-    // =========================
     // ARQUERO
-    // =========================
     this.keeper = this.add.rectangle(
         this.radarX + this.radarW + 3,
         this.radarY + 65,
@@ -145,6 +143,12 @@ create(){
         fontStyle:"bold"
     }).setOrigin(0.5);
 
+    this.stealText = this.add.text(400,170,"",{
+        fontSize:"42px",
+        fill:"#ff5555",
+        fontStyle:"bold"
+    }).setOrigin(0.5);
+
     // =========================
     // CONTROLES
     // =========================
@@ -163,6 +167,7 @@ create(){
 
     this.goalCooldown = false;
     this.saveCooldown = false;
+    this.stealCooldown = false;
 
 }
 
@@ -171,7 +176,7 @@ update(){
     let moving = false;
 
     // =========================
-    // MOVIMIENTO
+    // PLAYER MOVE
     // =========================
     if(this.cursors.right.isDown){
         this.mapPlayer.x += this.speed;
@@ -250,7 +255,7 @@ update(){
     }
 
     // =========================
-    // BALÓN
+    // BALL
     // =========================
     if(this.hasBall){
 
@@ -291,7 +296,15 @@ update(){
     );
 
     // =========================
-    // ARQUERO MOVE
+    // DEFENSOR IA
+    // =========================
+    this.moveDefender();
+
+    // robo
+    this.checkSteal();
+
+    // =========================
+    // ARQUERO
     // =========================
     this.keeper.y += this.keeperSpeed * this.keeperDir;
 
@@ -303,18 +316,11 @@ update(){
         this.keeperDir = -1;
     }
 
-    // =========================
-    // ATAJADA
-    // =========================
     this.checkSave();
-
-    // =========================
-    // GOL
-    // =========================
     this.checkGoal();
 
     // =========================
-    // BALÓN ARRIBA
+    // BALL ARRIBA
     // =========================
     let targetX = this.hasBall
         ? this.player.x + (this.facing==="right" ? 45 : -45)
@@ -327,6 +333,51 @@ update(){
         this.ball.angle += 15;
     }else{
         this.ball.angle = 0;
+    }
+
+}
+
+moveDefender(){
+
+    let speed = 1.1;
+
+    let angle = Phaser.Math.Angle.Between(
+        this.defender.x,this.defender.y,
+        this.mapPlayer.x,this.mapPlayer.y
+    );
+
+    this.defender.x += Math.cos(angle) * speed;
+    this.defender.y += Math.sin(angle) * speed;
+
+}
+
+checkSteal(){
+
+    if(this.stealCooldown) return;
+    if(!this.hasBall) return;
+
+    let d = Phaser.Math.Distance.Between(
+        this.mapPlayer.x,this.mapPlayer.y,
+        this.defender.x,this.defender.y
+    );
+
+    if(d < 14){
+
+        this.stealCooldown = true;
+        this.hasBall = false;
+
+        this.mapBall.x = this.defender.x + 10;
+        this.mapBall.y = this.defender.y;
+
+        this.ballVX = -3;
+        this.ballVY = Phaser.Math.Between(-1,1);
+
+        this.stealText.setText("ROBO!");
+
+        this.time.delayedCall(900,()=>{
+            this.stealText.setText("");
+            this.stealCooldown = false;
+        });
     }
 
 }
@@ -395,6 +446,9 @@ resetPlay(){
 
     this.mapBall.x = 312;
     this.mapBall.y = 510;
+
+    this.defender.x = 500;
+    this.defender.y = 510;
 
     this.hasBall = true;
     this.ballVX = 0;
