@@ -5,6 +5,8 @@ constructor(scene, spaceKey){
     this.spaceKey = spaceKey;
 
     this.hasBall = true;
+    this.owner = "player";
+    this.cpuCarrier = null;
 
     this.vx = 0;
     this.vy = 0;
@@ -22,10 +24,13 @@ update(){
 
     if(this.scene.isPaused) return;
 
-    // disparo directo con espacio
-    // if(this.hasBall && Phaser.Input.Keyboard.JustDown(this.spaceKey)){
-    //     this.shoot();
-    // }
+    // =========================
+    // POSESIÓN CPU
+    // =========================
+    if(this.owner === "cpu"){
+        this.cpuPlay();
+        return;
+    }
 
     // =========================
     // CON PELOTA
@@ -41,82 +46,88 @@ update(){
     // =========================
     else{
 
-    this.ball.x += this.vx;
-    this.ball.y += this.vy;
+        this.ball.x += this.vx;
+        this.ball.y += this.vy;
 
-    if(!this.isPassing){
-        this.vx *= 0.98;
-        this.vy *= 0.98;
-    }
+        // fricción normal
+        if(!this.isPassing){
+            this.vx *= 0.98;
+            this.vy *= 0.98;
+        }
 
-    // =====================
-    // LLEGADA DEL PASE
-    // =====================
-    if(this.isPassing){
+        // =====================
+        // LLEGADA DEL PASE
+        // =====================
+        if(this.isPassing){
 
-        let d = Phaser.Math.Distance.Between(
+            let d = Phaser.Math.Distance.Between(
+                this.ball.x,
+                this.ball.y,
+                this.passTarget.x,
+                this.passTarget.y
+            );
+
+            if(d < 18){
+
+                this.hasBall = true;
+                this.isPassing = false;
+
+                let oldX = this.scene.logicPlayer.x;
+                let oldY = this.scene.logicPlayer.y;
+
+                // cambiás al receptor
+                this.scene.logicPlayer.x = this.passTarget.x;
+                this.scene.logicPlayer.y = this.passTarget.y;
+
+                // viejo queda de apoyo
+                this.scene.teammate.x = oldX;
+                this.scene.teammate.y = oldY;
+
+                this.vx = 0;
+                this.vy = 0;
+
+                return;
+            }
+        }
+
+        // =====================
+        // RECUPERA JUGADOR
+        // =====================
+        let dPlayer = Phaser.Math.Distance.Between(
             this.ball.x,
             this.ball.y,
-            this.passTarget.x,
-            this.passTarget.y
+            this.scene.logicPlayer.x,
+            this.scene.logicPlayer.y
         );
 
-        if(d < 18){
-
+        if(dPlayer < 16){
             this.hasBall = true;
-            this.isPassing = false;
+            this.owner = "player";
+            this.vx = 0;
+            this.vy = 0;
+            return;
+        }
 
-            let oldX = this.scene.logicPlayer.x;
-            let oldY = this.scene.logicPlayer.y;
+        // =====================
+        // RECUPERA CPU
+        // =====================
+        let dDef1 = Phaser.Math.Distance.Between(
+            this.ball.x,
+            this.ball.y,
+            this.scene.def1.x,
+            this.scene.def1.y
+        );
 
-            this.scene.logicPlayer.x = this.passTarget.x;
-            this.scene.logicPlayer.y = this.passTarget.y;
-
-            this.scene.teammate.x = oldX;
-            this.scene.teammate.y = oldY;
+        if(dDef1 < 16){
+            this.hasBall = false;
+            this.owner = "cpu";
+            this.cpuCarrier = this.scene.def1;
 
             this.vx = 0;
             this.vy = 0;
-
             return;
         }
     }
-
-    // =====================
-    // RECUPERAR JUGADOR
-    // =====================
-    let dPlayer = Phaser.Math.Distance.Between(
-        this.ball.x,
-        this.ball.y,
-        this.scene.logicPlayer.x,
-        this.scene.logicPlayer.y
-    );
-
-    if(dPlayer < 16){
-        this.hasBall = true;
-        this.vx = 0;
-        this.vy = 0;
-        return;
-    }
-
-    // =====================
-    // RECUPERAR CPU
-    // =====================
-    let dDef1 = Phaser.Math.Distance.Between(
-        this.ball.x,
-        this.ball.y,
-        this.scene.def1.x,
-        this.scene.def1.y
-    );
-
-    if(dDef1 < 16){
-        this.owner = "cpu";
-        this.cpuCarrier = this.scene.def1;
-        this.vx = 0;
-        this.vy = 0;
-        return;
-    }
-}
 }
 
 // =========================
@@ -127,7 +138,10 @@ shoot(){
     if(!this.hasBall) return;
 
     this.hasBall = false;
+    this.owner = "player";
+
     this.isPassing = false;
+    this.cpuCarrier = null;
 
     this.vx = 7;
     this.vy = 0;
@@ -141,7 +155,10 @@ pass(){
     if(!this.hasBall) return;
 
     this.hasBall = false;
+    this.owner = "player";
+
     this.isPassing = true;
+    this.cpuCarrier = null;
 
     this.passTarget = this.scene.teammate;
 
@@ -152,6 +169,55 @@ pass(){
 
     this.vx = (dx / dist) * 6;
     this.vy = (dy / dist) * 6;
+}
+
+// =========================
+// JUEGA LA CPU
+// =========================
+cpuPlay(){
+
+    if(!this.cpuCarrier){
+        this.owner = "player";
+        this.hasBall = true;
+        return;
+    }
+
+    // rival corre hacia tu arco
+    let speed = 1.5;
+
+    if(this.cpuCarrier.x < 300){
+        speed = 3.0; // sprint cerca del arco
+    }
+
+    this.cpuCarrier.x -= speed;
+
+    // pelota pegada rival
+    this.ball.x = this.cpuCarrier.x - 12;
+    this.ball.y = this.cpuCarrier.y;
+
+    // si lo tocás, robás
+    let d = Phaser.Math.Distance.Between(
+        this.scene.logicPlayer.x,
+        this.scene.logicPlayer.y,
+        this.cpuCarrier.x,
+        this.cpuCarrier.y
+    );
+
+    if(d < 18){
+        this.owner = "player";
+        this.hasBall = true;
+        this.cpuCarrier = null;
+        return;
+    }
+
+    // si llega a tu arco
+    if(this.cpuCarrier.x < 80){
+        this.owner = "player";
+        this.hasBall = true;
+        this.cpuCarrier = null;
+
+        this.scene.resetPlay();
+    }
 }
 }
 
