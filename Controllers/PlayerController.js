@@ -42,6 +42,13 @@ update(){
         this.moving = true;
     }
 
+    if(this.scene.isPaused){
+
+    this.sprite.anims.stop();
+    this.sprite.setFrame(0);
+    return;
+}
+
     // =========================
     // MOVIMIENTO REAL (LOGIC)
     // =========================
