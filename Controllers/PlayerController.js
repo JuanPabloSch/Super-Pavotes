@@ -14,6 +14,7 @@ create(){
 }
 
 update(){
+    if(this.scene.isPaused) return;
 
     let dx = 0;
     let dy = 0;

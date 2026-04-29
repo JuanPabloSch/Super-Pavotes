@@ -18,7 +18,7 @@ create(){
     // =========================
     this.speed = 2.6;
     this.facing = "right";
-
+    
     // =========================
     // INPUT
     // =========================
@@ -73,7 +73,8 @@ create(){
     // =========================
     this.score = 0;
     this.scoreText = this.add.text(20,15,"GOLES: 0",{fontSize:"24px",fill:"#fff"});
-
+    this.aiController = new AIController(this);
+    this.aiController.create();
     // =========================
     // CONTROLLERS
     // =========================
@@ -82,13 +83,16 @@ create(){
 
     this.playerController.create();
     this.ballController.create();
+    this.uiController = new UIController(this);
+    this.uiController.create();
 }
 
 update(){
 
     this.playerController.update();
     this.ballController.update();
-
+    this.aiController.update();
+    this.uiController.update();
     // =========================
     // RADAR UPDATE (IMPORTANTE)
     // =========================

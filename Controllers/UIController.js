@@ -2,32 +2,54 @@ class UIController {
 
 constructor(scene){
     this.scene = scene;
+
     this.menuOpen = false;
     this.menuIndex = 0;
 
-    this.options = ["DRIBLAR","PATEAR","PASAR"];
+    this.options = [
+        "PATEAR",
+        "PASAR"
+    ];
 }
 
 create(){
 
-    this.menuText = this.scene.menuText;
-    this.commentText = this.scene.commentText;
+    this.enterKey = this.scene.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.ENTER
+    );
+
+    this.spaceKey = this.scene.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.SPACE
+    );
+
+    this.escKey = this.scene.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.ESC
+    );
 
     this.cursors = this.scene.cursors;
-    this.enterKey = this.scene.enterKey;
-    this.escKey = this.scene.escKey;
-    this.spaceKey = this.scene.spaceKey;
+
+    this.text = this.scene.add.text(
+        40, 240, "",
+        {
+            fontSize:"28px",
+            fill:"#ffffff"
+        }
+    );
 }
 
 update(){
 
-    if(Phaser.Input.Keyboard.JustDown(this.enterKey)){
-        this.menuOpen = !this.menuOpen;
-        this.commentText.setText("¿Qué harás?");
+    // abrir menú
+    if(
+        Phaser.Input.Keyboard.JustDown(this.enterKey)
+        && !this.menuOpen
+    ){
+        this.openMenu();
     }
 
     if(!this.menuOpen) return;
 
+    // navegar
     if(Phaser.Input.Keyboard.JustDown(this.cursors.up)){
         this.menuIndex--;
     }
@@ -36,41 +58,71 @@ update(){
         this.menuIndex++;
     }
 
-    if(this.menuIndex < 0) this.menuIndex = this.options.length-1;
-    if(this.menuIndex >= this.options.length) this.menuIndex = 0;
+    if(this.menuIndex < 0){
+        this.menuIndex = this.options.length - 1;
+    }
+
+    if(this.menuIndex >= this.options.length){
+        this.menuIndex = 0;
+    }
+
+    this.draw();
+
+    // cerrar
+    if(Phaser.Input.Keyboard.JustDown(this.escKey)){
+        this.closeMenu();
+    }
+
+    // elegir
+    if(Phaser.Input.Keyboard.JustDown(this.spaceKey)){
+
+        let op = this.options[this.menuIndex];
+
+        if(op === "PATEAR"){
+            this.scene.ballController.shoot();
+        }
+
+        if(op === "PASAR"){
+            this.scene.ballController.pass();
+        }
+
+        this.closeMenu();
+    }
+}
+
+openMenu(){
+
+    this.menuOpen = true;
+    this.menuIndex = 0;
+
+    this.scene.isPaused = true;
+
+    this.draw();
+}
+
+closeMenu(){
+
+    this.menuOpen = false;
+    this.text.setText("");
+
+    this.scene.isPaused = false;
+}
+
+draw(){
 
     let txt = "";
 
     for(let i=0;i<this.options.length;i++){
-        txt += (i===this.menuIndex ? "▶ " : "   ") + this.options[i] + "\n";
+
+        if(i === this.menuIndex){
+            txt += "▶ " + this.options[i] + "\n";
+        }else{
+            txt += "   " + this.options[i] + "\n";
+        }
     }
 
-    this.menuText.setText(txt);
-
-    if(Phaser.Input.Keyboard.JustDown(this.escKey)){
-        this.menuOpen = false;
-        this.menuText.setText("");
-    }
-
-    if(Phaser.Input.Keyboard.JustDown(this.spaceKey)){
-
-        let opt = this.options[this.menuIndex];
-
-        if(opt==="DRIBLAR"){
-            this.scene.mapPlayer.x += 45;
-        }
-
-        if(opt==="PASAR"){
-            this.scene.ballController.hasBall = true;
-        }
-
-        if(opt==="PATEAR"){
-            this.scene.ballController.hasBall = false;
-            this.scene.ballController.vx = 7;
-        }
-
-        this.menuOpen = false;
-        this.menuText.setText("");
-    }
+    this.text.setText(txt);
 }
 }
+
+window.UIController = UIController;

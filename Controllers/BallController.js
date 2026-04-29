@@ -15,6 +15,8 @@ create(){
 
 update(){
 
+    if(this.scene.isPaused) return;
+
     if(this.hasBall && Phaser.Input.Keyboard.JustDown(this.spaceKey)){
         this.hasBall = false;
         this.vx = 7;
@@ -37,5 +39,30 @@ update(){
             this.hasBall = true;
         }
     }
+
+    
+}
+shoot(){
+    if(!this.hasBall) return;
+
+    this.hasBall = false;
+    this.vx = 7;
+    this.vy = 0;
+}
+
+pass(){
+    if(!this.hasBall) return;
+
+    this.hasBall = false;
+
+    let mate = this.scene.teammate;
+
+    let dx = mate.x - this.ball.x;
+    let dy = mate.y - this.ball.y;
+
+    let dist = Math.sqrt(dx*dx + dy*dy);
+
+    this.vx = (dx/dist) * 6;
+    this.vy = (dy/dist) * 6;
 }
 }
