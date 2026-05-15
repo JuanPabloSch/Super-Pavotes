@@ -106,6 +106,7 @@ create(){
     this.enterKey = this.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.ENTER
     );
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.duelCooldown = 0;
     this.playerController.create();
     this.ballController.create();
@@ -216,7 +217,7 @@ handleDuelMenu(){
 
     this.drawDuelMenu();
 
-    if(Phaser.Input.Keyboard.JustDown(this.enterKey)){
+    if(Phaser.Input.Keyboard.JustDown(this.spaceKey)){
         this.resolveDuel();
     }
 }

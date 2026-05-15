@@ -75,12 +75,35 @@ moveTeammate(){
 // DEFENSORES
 // =========================
 moveDefenders(){
+    let ball = this.scene.ballController;
+    
+    // Por defecto, asumimos que el objetivo es el jugador
+    let targetX = this.scene.logicPlayer.x;
+    let targetY = this.scene.logicPlayer.y;
 
-    let px = this.scene.logicPlayer.x;
-    let py = this.scene.logicPlayer.y;
+    // SI LA PELOTA ESTÁ SUELTA (En un pase, tiro o rebote)
+    // Los defensores corren desesperados hacia la pelota, no hacia el jugador
+    if (!ball.hasBall && ball.owner === "player") {
+        targetX = this.scene.logicBall.x;
+        targetY = this.scene.logicBall.y;
+    }
+    
+    // SI LA CPU TIENE LA PELOTA
+    // El defensor que lleva la pelota ya se mueve en 'cpuPlay()', 
+    // pero podemos hacer que el segundo defensor (def2) lo acompañe o presione
+    if (ball.owner === "cpu") {
+        // Si la CPU ataca, el def2 puede adelantarse para presionar arriba
+        this.moveToward(this.def1, this.def1.x, this.def1.y, 0); // Se queda quieto si ya maneja en cpuPlay
+        this.moveToward(this.def2, this.scene.logicBall.x - 30, this.scene.logicBall.y + 20, 0.8);
+        return;
+    }
 
-    this.moveToward(this.def1, px, py, 1.0);
-    this.moveToward(this.def2, px + 80, py + 30, 0.8);
+    // MOVIMIENTO NORMAL DE MARCA (Cuando el jugador tiene la pelota o está suelta)
+    // El Defensor 1 va directo al objetivo (pelota o jugador)
+    this.moveToward(this.def1, targetX, targetY, 1.0);
+    
+    // El Defensor 2 hace un escalonamiento (cobertura) un poco más atrás y al costado
+    this.moveToward(this.def2, targetX + 60, targetY + 30, 0.8);
 }
 
 // =========================

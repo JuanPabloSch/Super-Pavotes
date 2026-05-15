@@ -76,20 +76,18 @@ update(){
 
     this.draw();
 
-    // CERRAR CON ESC
+    // CERRAR CON ESC (Solo en menú manual)
     if(Phaser.Input.Keyboard.JustDown(this.escKey)){
         this.closeMenu();
     }
 
-    // ELEGIR OPCIÓN CON ESPACIO
+    // ELEGIR OPCIÓN CON ESPACIO (Barra)
     if(Phaser.Input.Keyboard.JustDown(this.spaceKey)){
-
         let op = this.options[this.menuIndex];
 
         if(op === "PATEAR"){
             this.scene.ballController.shoot();
         }
-
         if(op === "PASAR"){
             this.scene.ballController.pass();
         }
@@ -97,7 +95,6 @@ update(){
         this.closeMenu();
     }
 }
-
 openMenu(){
 
     this.menuOpen = true;
