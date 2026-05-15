@@ -174,28 +174,24 @@ pass(){
 // =========================
 // JUEGA LA CPU
 // =========================
+// REEMPLAZAR cpuPlay()
+// en BallController
+// =========================
 cpuPlay(){
-
     if(!this.cpuCarrier){
         this.owner = "player";
         this.hasBall = true;
         return;
     }
 
-    // rival corre hacia tu arco
-    let speed = 1.5;
-
-    if(this.cpuCarrier.x < 300){
-        speed = 3.0; // sprint cerca del arco
+    // stun cpu
+    if(this.scene.cpuStun > 0){
+        this.ball.x = this.cpuCarrier.x - 12;
+        this.ball.y = this.cpuCarrier.y;
+        return;
     }
 
-    this.cpuCarrier.x -= speed;
-
-    // pelota pegada rival
-    this.ball.x = this.cpuCarrier.x - 12;
-    this.ball.y = this.cpuCarrier.y;
-
-    // si lo tocás, robás
+    // si jugador cerca -> duelo
     let d = Phaser.Math.Distance.Between(
         this.scene.logicPlayer.x,
         this.scene.logicPlayer.y,
@@ -203,20 +199,25 @@ cpuPlay(){
         this.cpuCarrier.y
     );
 
-    if(d < 18){
-        this.owner = "player";
-        this.hasBall = true;
-        this.cpuCarrier = null;
+    if(d < 28 && !this.scene.duelMode && !this.scene.contactLock){
+        this.scene.contactLock = true; // Bloqueamos contactos para que no repita
+        this.scene.openDuelMenu(); 
         return;
     }
 
-    // si llega a tu arco
+    // avanzar
+    this.cpuCarrier.x -= 2.2;
+
+    this.ball.x = this.cpuCarrier.x - 12;
+    this.ball.y = this.cpuCarrier.y;
+
+    // gol cpu
     if(this.cpuCarrier.x < 80){
+        this.scene.resetPlay();
+
         this.owner = "player";
         this.hasBall = true;
         this.cpuCarrier = null;
-
-        this.scene.resetPlay();
     }
 }
 }

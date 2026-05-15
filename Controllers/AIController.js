@@ -17,24 +17,58 @@ update(){
 
     if(this.scene.isPaused) return;
 
+    let ball = this.scene.ballController;
+
+    // distancia jugador / defensor
+    let d = Phaser.Math.Distance.Between(
+        this.scene.logicPlayer.x,
+        this.scene.logicPlayer.y,
+        this.def1.x,
+        this.def1.y
+    );
+
+    // liberar lock
+    if(d > 90){
+    this.scene.contactLock = false;
+}
+
+    // duelo
+    if(
+        d < 28 &&
+        !this.scene.duelMode &&
+        !this.scene.contactLock
+    ){
+
+        this.scene.contactLock = true;
+
+        if(ball.owner === "player" && ball.hasBall){
+            this.scene.openAttackMenu();
+            return;
+        }
+
+        if(ball.owner === "cpu"){
+            this.scene.openDuelMenu();
+            return;
+        }
+    }
+
     this.moveTeammate();
     this.moveDefenders();
     this.moveKeeper();
 
-    this.checkSteal();
+    // this.checkSteal();
     this.checkSave();
 }
 
 // =========================
 // COMPAÑERO
 // =========================
-
 moveTeammate(){
 
-    let targetX = this.scene.logicPlayer.x + 90;
-    let targetY = this.scene.logicPlayer.y - 40;
+    let tx = this.scene.logicPlayer.x + 90;
+    let ty = this.scene.logicPlayer.y - 40;
 
-    this.moveToward(this.teammate, targetX, targetY, 1.2);
+    this.moveToward(this.teammate, tx, ty, 1.2);
 }
 
 // =========================
@@ -46,8 +80,6 @@ moveDefenders(){
     let py = this.scene.logicPlayer.y;
 
     this.moveToward(this.def1, px, py, 1.0);
-
-    // segundo defensor cubre zona
     this.moveToward(this.def2, px + 80, py + 30, 0.8);
 }
 
@@ -58,15 +90,13 @@ moveKeeper(){
 
     this.keeper.y += this.keeperDir * 1.4;
 
-    if(this.keeper.y < 430){
-        this.keeperDir = 1;
-    }
-
-    if(this.keeper.y > 515){
-        this.keeperDir = -1;
-    }
+    if(this.keeper.y < 430) this.keeperDir = 1;
+    if(this.keeper.y > 515) this.keeperDir = -1;
 }
 
+// =========================
+// ROBOS SUELTOS
+// =========================
 checkSteal(){
 
     if(!this.scene.ballController.hasBall) return;
@@ -78,40 +108,33 @@ checkSteal(){
         this.def1.x, this.def1.y
     );
 
-    let d2 = Phaser.Math.Distance.Between(
-        p.x, p.y,
-        this.def2.x, this.def2.y
-    );
-
-    if(d1 < 20 || d2 < 20){
-
+    if(d1 < 18){
         this.scene.ballController.hasBall = false;
-
-        this.scene.logicBall.x = p.x - 20;
-        this.scene.logicBall.y = p.y;
-
-        this.scene.ballController.vx = -3;
-        this.scene.ballController.vy = 0;
+        this.scene.ballController.owner = "cpu";
+        this.scene.ballController.cpuCarrier = this.def1;
     }
 }
 
+// =========================
+// ATAJADAS
+// =========================
 checkSave(){
 
     if(this.scene.ballController.hasBall) return;
 
     let b = this.scene.logicBall;
 
-    let dist = Phaser.Math.Distance.Between(
+    let d = Phaser.Math.Distance.Between(
         b.x, b.y,
         this.keeper.x, this.keeper.y
     );
 
-    if(dist < 22){
-
+    if(d < 22){
         this.scene.ballController.vx = -4;
-        this.scene.ballController.vy = Phaser.Math.Between(-2,2);
+        this.scene.ballController.vy = 0;
     }
 }
+
 // =========================
 // UTILIDAD
 // =========================
@@ -127,6 +150,7 @@ moveToward(obj, tx, ty, speed){
         obj.y += (dy / dist) * speed;
     }
 }
+
 }
 
 window.AIController = AIController;

@@ -39,17 +39,25 @@ create(){
 
 update(){
 
-    // abrir menú
+    // SI ESTÁ EN DUELO, EL MENÚ MANUAL NO DEBE HACER NADA
+    if (this.scene.duelMode) return; 
+
+    // ABRE EL MENÚ MANUAL (Solo si tenés la pelota y no está abierto ya)
     if(
         Phaser.Input.Keyboard.JustDown(this.enterKey)
         && !this.menuOpen
     ){
-        this.openMenu();
+        let ball = this.scene.ballController;
+
+        if (ball.hasBall && ball.owner === "player") {
+            this.openMenu();
+        }
     }
 
+    // SI EL MENÚ NO ESTÁ ABIERTO, SE DETIENE ACÁ (No lee las flechas ni el espacio)
     if(!this.menuOpen) return;
 
-    // navegar
+    // NAVEGAR OPCIONES
     if(Phaser.Input.Keyboard.JustDown(this.cursors.up)){
         this.menuIndex--;
     }
@@ -68,12 +76,12 @@ update(){
 
     this.draw();
 
-    // cerrar
+    // CERRAR CON ESC
     if(Phaser.Input.Keyboard.JustDown(this.escKey)){
         this.closeMenu();
     }
 
-    // elegir
+    // ELEGIR OPCIÓN CON ESPACIO
     if(Phaser.Input.Keyboard.JustDown(this.spaceKey)){
 
         let op = this.options[this.menuIndex];

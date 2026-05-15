@@ -81,6 +81,32 @@ create(){
     this.playerController = new PlayerController(this);
     this.ballController = new BallController(this, this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE));
 
+        // =========================
+    // PEGAR EN GameScene create()
+    // =========================
+    this.isPaused = false;
+    this.duelMode = false;
+
+    this.playerStun = 0;
+    this.cpuStun = 0;
+
+    this.duelOptions = ["TACKLEAR", "HACER FRENTE"];
+    this.duelIndex = 0;
+
+    this.menuText = this.add.text(
+        60, 245, "",
+        { fontSize:"24px", fill:"#ffffff" }
+    );
+
+    this.commentText = this.add.text(
+        420, 245, "",
+        { fontSize:"22px", fill:"#ffff66" }
+    );
+
+    this.enterKey = this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.ENTER
+    );
+    this.duelCooldown = 0;
     this.playerController.create();
     this.ballController.create();
     this.uiController = new UIController(this);
@@ -88,6 +114,18 @@ create(){
 }
 
 update(){
+
+        // =========================
+    // PEGAR EN GameScene update()
+    // al principio de todo
+    // =========================
+    if(this.playerStun > 0) this.playerStun--;
+    if(this.cpuStun > 0) this.cpuStun--;
+
+    if(this.duelMode){
+        this.handleDuelMenu();
+        return;
+    }
 
     this.playerController.update();
     this.ballController.update();
@@ -104,6 +142,10 @@ update(){
 
     this.checkGoal();
     this.moveBg();
+
+    if(this.duelCooldown > 0){
+    this.duelCooldown--;
+}
 }
 
 // =========================
@@ -122,6 +164,157 @@ checkGoal(){
     }
 }
 
+// =========================
+// PEGAR EN GameScene class
+// =========================
+openDuelMenu(){
+    this.duelMode = true;
+    this.isPaused = true;
+    this.menuType = "defense"; // <-- Forzamos que por defecto sea defensa si entra acá
+    this.duelIndex = 0;
+    this.contactLock = false;
+
+    this.duelOptions = ["TACKLEAR", "HACER FRENTE"]; // <-- Aseguramos las opciones defensivas
+
+    this.commentText.setText("¡ENFRENTAMIENTO!");
+    this.drawDuelMenu();
+}
+
+drawDuelMenu(){
+
+    let txt = "";
+
+    for(let i=0;i<this.duelOptions.length;i++){
+
+        if(i === this.duelIndex){
+            txt += "▶ " + this.duelOptions[i] + "\n";
+        }else{
+            txt += "   " + this.duelOptions[i] + "\n";
+        }
+    }
+
+    this.menuText.setText(txt);
+}
+
+handleDuelMenu(){
+
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.up)){
+        this.duelIndex--;
+    }
+
+    if(Phaser.Input.Keyboard.JustDown(this.cursors.down)){
+        this.duelIndex++;
+    }
+
+    if(this.duelIndex < 0){
+        this.duelIndex = this.duelOptions.length - 1;
+    }
+
+    if(this.duelIndex >= this.duelOptions.length){
+        this.duelIndex = 0;
+    }
+
+    this.drawDuelMenu();
+
+    if(Phaser.Input.Keyboard.JustDown(this.enterKey)){
+        this.resolveDuel();
+    }
+}
+
+// =========================
+// REEMPLAZAR resolveDuel()
+// =========================
+resolveDuel(){
+
+    let action = this.duelOptions[this.duelIndex];
+    let roll = Math.random();
+
+    // =====================================
+    // MENU OFENSIVO
+    // =====================================
+    if(this.menuType === "attack"){
+
+        if(action === "ESQUIVAR"){
+
+            if(roll < 0.55){
+
+                this.commentText.setText("¡LO PASASTE!");
+
+                this.logicPlayer.x += 55;
+                this.def1.x -= 35;
+                this.cpuStun = 90;
+                
+
+            }else{
+
+                this.commentText.setText("¡TE LA ROBARON!");
+
+                this.ballController.hasBall = false;
+                this.ballController.owner = "cpu";
+                this.ballController.cpuCarrier = this.def1;
+
+                this.playerStun = 90;
+            }
+        }
+
+        if(action === "PASAR"){
+
+            this.commentText.setText("¡BUEN PASE!");
+            this.ballController.pass();
+        }
+    }
+
+    // =====================================
+    // MENU DEFENSIVO
+    // =====================================
+    if(this.menuType === "defense"){
+
+        if(action === "TACKLEAR"){
+
+            if(roll < 0.55){
+
+                this.commentText.setText("¡ROBÓ LA PELOTA!");
+
+                this.ballController.owner = "player";
+                this.ballController.hasBall = true;
+                this.ballController.cpuCarrier = null;
+
+                this.cpuStun = 120;
+
+            }else{
+
+                this.commentText.setText("¡TE SUPERÓ!");
+                this.playerStun = 120;
+            }
+        }
+
+        if(action === "HACER FRENTE"){
+
+            if(roll < 0.45){
+
+                this.commentText.setText("¡RECUPERASTE!");
+
+                this.ballController.owner = "player";
+                this.ballController.hasBall = true;
+                this.ballController.cpuCarrier = null;
+
+                this.cpuStun = 90;
+
+            }else{
+
+                this.commentText.setText("PASÓ DE LARGO");
+                this.playerStun = 60;
+            }
+        }
+    this.duelCooldown = 90;
+
+    }
+
+    this.duelMode = false;
+    this.isPaused = false;
+    this.menuText.setText("");
+}
+
 resetPlay(){
 
     this.logicPlayer.x = 220;
@@ -132,11 +325,30 @@ resetPlay(){
 
     this.ballController.hasBall = true;
 }
+// =========================
+// PEGAR EN GameScene class
+// NUEVA FUNCIÓN
+// =========================
+    openAttackMenu(){
 
-// =========================
-// SCROLL BACKGROUND (VISUAL ONLY)
-// =========================
-moveBg(){
+        this.duelMode = true;
+        this.isPaused = true;
+
+        this.menuType = "attack";
+        this.duelIndex = 0;
+
+        this.duelOptions = [
+            "ESQUIVAR",
+            "PASAR"
+        ];
+
+        this.commentText.setText("¡TE MARCAN!");
+        this.drawDuelMenu();
+    }
+    // =========================
+    // SCROLL BACKGROUND (VISUAL ONLY)
+    // =========================
+    moveBg(){
 
     let v = this.playerController.moving ? -4 : 0;
 
