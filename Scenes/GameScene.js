@@ -16,7 +16,7 @@ create(){
     // =========================
     // CONFIG
     // =========================
-    this.speed = 2.6;
+    this.speed = 1.2;
     this.facing = "right";
     
     // =========================
@@ -34,11 +34,14 @@ create(){
         repeat:-1
     });
     this.radarField = this.add.rectangle(
-    410, 490,
-    660,
-    190,
-    0x1f7a1f
-).setStrokeStyle(2, 0xffffff);
+        410, 490,
+        660,
+        190,
+        0x1f7a1f
+    ).setStrokeStyle(2, 0xffffff);
+    
+    this.activeCharacter = "player1"; 
+
     // =========================
     // WORLD (VISUAL)
     // =========================
@@ -75,20 +78,19 @@ create(){
     this.scoreText = this.add.text(20,15,"GOLES: 0",{fontSize:"24px",fill:"#fff"});
     this.aiController = new AIController(this);
     this.aiController.create();
+    
     // =========================
     // CONTROLLERS
     // =========================
     this.playerController = new PlayerController(this);
     this.ballController = new BallController(this, this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE));
 
-        // =========================
-    // PEGAR EN GameScene create()
-    // =========================
     this.isPaused = false;
     this.duelMode = false;
 
     this.playerStun = 0;
     this.cpuStun = 0;
+    this.teammateStun = 0; // <-- NUEVO: Para marear de forma independiente al compañero
 
     this.duelOptions = ["TACKLEAR", "HACER FRENTE"];
     this.duelIndex = 0;
@@ -108,6 +110,7 @@ create(){
     );
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.duelCooldown = 0;
+    
     this.playerController.create();
     this.ballController.create();
     this.uiController = new UIController(this);
@@ -116,24 +119,64 @@ create(){
 
 update(){
 
-        // =========================
-    // PEGAR EN GameScene update()
-    // al principio de todo
-    // =========================
+    // 1. Restamos los contadores de mareo
     if(this.playerStun > 0) this.playerStun--;
     if(this.cpuStun > 0) this.cpuStun--;
+    if(this.teammateStun > 0) this.teammateStun--; // Restamos stun del compañero
 
+    // 2. Si hay un menú de duelo abierto, procesamos las flechas del menú y cortamos acá
     if(this.duelMode){
         this.handleDuelMenu();
         return;
     }
 
+    // =================================================================
+    // CAMBIO DE JUGADOR DEFENSIVO CON ENTER (CORREGIDO)
+    // =================================================================
+    if (this.ballController.owner !== "player" && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+        
+        // Solo te deja cambiar si tu compañero NO está mareado
+        if (this.teammateStun === 0) {
+            let viejoX = this.logicPlayer.x;
+            let viejoY = this.logicPlayer.y;
+
+            // Enroque de posiciones inmediato
+            this.logicPlayer.x = this.teammate.x;
+            this.logicPlayer.y = this.teammate.y;
+
+            this.teammate.x = viejoX;
+            this.teammate.y = viejoY;
+
+            // El que dejas atrás hereda el tiempo de espera, pero tu jugador actual queda libre
+            this.teammateStun = 45; 
+            this.playerStun = 0; // Cero lag para el personaje que manejás ahora
+
+            this.commentText.setText("¡CAMBIO DE JUGADOR!");
+        }
+    }
+
+    // =================================================================
+    // FILTRO DE STUN: Si el jugador actual está mareado, congelamos su control
+    // =================================================================
+    if (this.playerStun > 0) {
+        this.ballController.update(); 
+        
+        this.mapPlayer.x = this.logicPlayer.x;
+        this.mapPlayer.y = this.logicPlayer.y;
+        this.mapBall.x = this.logicBall.x;
+        this.mapBall.y = this.logicBall.y;
+        this.moveBg();
+        return; 
+    }
+
+    // 3. JUEGO BASE
     this.playerController.update();
     this.ballController.update();
     this.aiController.update();
     this.uiController.update();
+
     // =========================
-    // RADAR UPDATE (IMPORTANTE)
+    // RADAR UPDATE
     // =========================
     this.mapPlayer.x = this.logicPlayer.x;
     this.mapPlayer.y = this.logicPlayer.y;
@@ -145,15 +188,14 @@ update(){
     this.moveBg();
 
     if(this.duelCooldown > 0){
-    this.duelCooldown--;
-}
+        this.duelCooldown--;
+    }
 }
 
 // =========================
 // GOLES
 // =========================
 checkGoal(){
-
     if(
         this.logicBall.x > 730 &&
         this.logicBall.y > 440 &&
@@ -166,51 +208,43 @@ checkGoal(){
 }
 
 // =========================
-// PEGAR EN GameScene class
+// DUELOS
 // =========================
 openDuelMenu(){
     this.duelMode = true;
     this.isPaused = true;
-    this.menuType = "defense"; // <-- Forzamos que por defecto sea defensa si entra acá
+    this.menuType = "defense"; 
     this.duelIndex = 0;
     this.contactLock = false;
 
-    this.duelOptions = ["TACKLEAR", "HACER FRENTE"]; // <-- Aseguramos las opciones defensivas
+    this.duelOptions = ["TACKLEAR", "HACER FRENTE"]; 
 
     this.commentText.setText("¡ENFRENTAMIENTO!");
     this.drawDuelMenu();
 }
 
 drawDuelMenu(){
-
     let txt = "";
-
     for(let i=0;i<this.duelOptions.length;i++){
-
         if(i === this.duelIndex){
             txt += "▶ " + this.duelOptions[i] + "\n";
         }else{
             txt += "   " + this.duelOptions[i] + "\n";
         }
     }
-
     this.menuText.setText(txt);
 }
 
 handleDuelMenu(){
-
     if(Phaser.Input.Keyboard.JustDown(this.cursors.up)){
         this.duelIndex--;
     }
-
     if(Phaser.Input.Keyboard.JustDown(this.cursors.down)){
         this.duelIndex++;
     }
-
     if(this.duelIndex < 0){
         this.duelIndex = this.duelOptions.length - 1;
     }
-
     if(this.duelIndex >= this.duelOptions.length){
         this.duelIndex = 0;
     }
@@ -222,93 +256,69 @@ handleDuelMenu(){
     }
 }
 
-// =========================
-// REEMPLAZAR resolveDuel()
-// =========================
 resolveDuel(){
-
     let action = this.duelOptions[this.duelIndex];
     let roll = Math.random();
 
     // =====================================
-    // MENU OFENSIVO
+    // MENU OFENSIVO (Tú atacas)
     // =====================================
     if(this.menuType === "attack"){
-
         if(action === "ESQUIVAR"){
-
             if(roll < 0.55){
-
                 this.commentText.setText("¡LO PASASTE!");
-
                 this.logicPlayer.x += 55;
                 this.def1.x -= 35;
-                this.cpuStun = 90;
-                
-
+                this.cpuStun = 60;
             }else{
-
                 this.commentText.setText("¡TE LA ROBARON!");
-
                 this.ballController.hasBall = false;
                 this.ballController.owner = "cpu";
                 this.ballController.cpuCarrier = this.def1;
 
-                this.playerStun = 90;
+                // Reducido a 35 frames (un suspiro) para que no se sienta pesado
+                this.playerStun = 120; 
             }
         }
 
         if(action === "PASAR"){
-
             this.commentText.setText("¡BUEN PASE!");
             this.ballController.pass();
         }
     }
 
     // =====================================
-    // MENU DEFENSIVO
+    // MENU DEFENSIVO (CPU ataca)
     // =====================================
     if(this.menuType === "defense"){
-
         if(action === "TACKLEAR"){
-
             if(roll < 0.55){
-
                 this.commentText.setText("¡ROBÓ LA PELOTA!");
-
                 this.ballController.owner = "player";
                 this.ballController.hasBall = true;
                 this.ballController.cpuCarrier = null;
-
-                this.cpuStun = 120;
-
+                this.cpuStun = 60;
             }else{
-
                 this.commentText.setText("¡TE SUPERÓ!");
-                this.playerStun = 120;
+                this.playerStun = 35; // Penalización corta
             }
         }
 
         if(action === "HACER FRENTE"){
-
             if(roll < 0.45){
-
                 this.commentText.setText("¡RECUPERASTE!");
-
                 this.ballController.owner = "player";
                 this.ballController.hasBall = true;
                 this.ballController.cpuCarrier = null;
-
-                this.cpuStun = 90;
-
+                this.cpuStun = 45;
             }else{
-
                 this.commentText.setText("PASÓ DE LARGO");
-                this.playerStun = 60;
+                this.playerStun = 35; // Penalización corta
             }
         }
-    this.duelCooldown = 90;
-
+        
+        // Cooldown dinámico corto para que la CPU reaccione rápido pero no buclee
+        this.duelCooldown = 25; 
     }
 
     this.duelMode = false;
@@ -317,55 +327,37 @@ resolveDuel(){
 }
 
 resetPlay(){
-
     this.logicPlayer.x = 220;
     this.logicPlayer.y = 470;
-
     this.logicBall.x = 235;
     this.logicBall.y = 470;
-
     this.ballController.hasBall = true;
+    this.playerStun = 0;
+    this.teammateStun = 0;
 }
-// =========================
-// PEGAR EN GameScene class
-// NUEVA FUNCIÓN
-// =========================
-    openAttackMenu(){
 
-        this.duelMode = true;
-        this.isPaused = true;
+openAttackMenu(){
+    this.duelMode = true;
+    this.isPaused = true;
+    this.menuType = "attack";
+    this.duelIndex = 0;
+    this.duelOptions = ["ESQUIVAR", "PASAR"];
 
-        this.menuType = "attack";
-        this.duelIndex = 0;
+    this.commentText.setText("¡TE MARCAN!");
+    this.drawDuelMenu();
+}
 
-        this.duelOptions = [
-            "ESQUIVAR",
-            "PASAR"
-        ];
-
-        this.commentText.setText("¡TE MARCAN!");
-        this.drawDuelMenu();
-    }
-    // =========================
-    // SCROLL BACKGROUND (VISUAL ONLY)
-    // =========================
-    moveBg(){
-
+moveBg(){
     let v = this.playerController.moving ? -4 : 0;
-
     this.bg1.x += v;
     this.bg2.x += v;
     this.line1.x += v;
     this.line2.x += v;
 
-    // =========================
-    // LOOP INFINITO
-    // =========================
     if(this.bg1.x <= -400){
         this.bg1.x = this.bg2.x + 800;
         this.line1.x = this.line2.x + 800;
     }
-
     if(this.bg2.x <= -400){
         this.bg2.x = this.bg1.x + 800;
         this.line2.x = this.line1.x + 800;
